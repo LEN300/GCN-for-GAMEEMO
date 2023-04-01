@@ -19,20 +19,23 @@ class GCN(nn.Module):
         nn.Dropout(0.5),
         self.relu = nn.ReLU()
         self.conv2 = dglnn.GraphConv(hidden_dim, n_classes)
-        # self.classify = nn.Linear(hidden_dim, n_classes)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, g, h):
         # 应用图卷积和激活函数
         out = self.conv1(g, h)
+        # print(f'第一层：{out.shape}')
         out = self.relu(out)
+        # print(f'激活：{out.shape}')
         out = self.conv2(g, out)
+        # print(f'第二层：{out.shape}')
+        # print("======================out=========================")
+        # print(out.shape)
         # h = F.relu(h)
         with g.local_scope():
-            g.ndata['h'] = out
+            g.ndata['h'] = out #edata ndata
             # 使用平均读出计算图表示
             hg = dgl.mean_nodes(g, 'h')
-            # return self.classify(hg)
             return self.softmax(hg)
     
 

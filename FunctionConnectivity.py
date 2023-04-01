@@ -1,19 +1,11 @@
 import os
 import pandas as pd
-import scipy.io
-import scipy.signal as ss
 import mne
 import mne_connectivity as mc
 import numpy as np
-from itertools import chain
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import time
-
-from matplotlib.ticker import FormatStrFormatter
 import seaborn as sns
-from sklearn.preprocessing import MinMaxScaler
-
+import matplotlib.pyplot as plt
+from preprocess import Preprocess
 '''归一化'''
 def Normalize(self):
     m = np.mean(self)
@@ -37,7 +29,6 @@ def FC():
     #               "alpha": [8.0, 13.0],"beta": [13.0, 30.0],"gamma": [30.0, 49.0]}
     channel = ['AF3', 'AF4', 'F3', 'F4', 'F7', 'F8', 'FC5', 'FC6', 'O1', 'O2', 'P7', 'P8', 'T7', 'T8']
     sfreq = 128
-    n = 0
     for i in fileName:
         print(f'当前被试：{i}')
 
@@ -65,33 +56,44 @@ def FC():
             '''测试用'''
             info = mne.create_info(ch_names=channel, sfreq=sfreq, ch_types='eeg')
             raw = mne.io.RawArray(data, info)
+
+            #预处理
+            # raw = Preprocess(raw=raw)
             # print(raw.info)
             # plt.show()
             #创建等距事件，默认id为1
             events = mne.make_fixed_length_events(raw, duration=10., overlap=4 ) #15 5
             # fig = mne.viz.plot_events(events, sfreq=raw.info['sfreq'],first_samp=raw.first_samp)
-            #通过evetns创建epoch
+            #通过events创建epoch
             epochs = mne.Epochs(raw,events)
             # epochs.plot(block = True)
             m = mc.spectral_connectivity_epochs(data = epochs, method = 'pli', sfreq = 128, fmin=12., fmax=43.,
                                                 mode = 'multitaper')
-            # print(type(m))
-            # print(m.shape)
-            md = m.get_data()
 
+            md = m.get_data()
+            # print(md)
+            # print(md.shape)
             # X.append(md)
             #spectral_connectivity_epochs得到的数据是196*41，将41维的频率求和
-            md = md.sum(axis = 1)
+            md = md.sum(axis = 1)/md.shape[1]
+            # print(md)
             #降维
             nmd = np.squeeze(md)
-            nor_nmd = Normalize(nmd)
-            # nor_nmd = nmd
+            # nor_nmd = Normalize(nmd)
+            nor_nmd = nmd
             #转换为14*14的方阵，存储为下三角矩阵，为方便观察可用.astype(int)转化为整型数组
+
             sm = np.array(nor_nmd).reshape(14, 14)
-            print(sm.shape)
-            # sm = sm + sm.T
+            sm = sm + sm.T
+            #画热力图
+            # sns.heatmap(data=sm,cmap="RdBu_r") #viridis plasma
+            # # 添加x轴标签
+            # plt.xlabel("channel")
+            # # 添加y轴标签
+            # plt.ylabel("channel")
+            # plt.show()
+
             FCMatrix.append(sm)
-            # print(sm.shape)
             # print(sm)
         print('========================================')
     return FCMatrix
